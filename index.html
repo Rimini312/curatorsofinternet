@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Curators of Internet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --bg: #e8e4df;
+    --panel: #d4d0cb;
+    --panel-hover: #c8c4bf;
+    --accent: #1a1a1a;
+    --accent2: #e74c3c;
+    --text: #1a1a1a;
+    --text-light: #666;
+    --border: #b0aca7;
+    --canvas-bg: #ffffff;
+    --btn-size: 38px;
+    --radius: 4px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  html, body { 
+    width:100%; height:100%; overflow:hidden; 
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    touch-action: none;
+  }
+
+  /* ─── HEADER ─── */
+  #header {
+    position: fixed; top:0; left:0; right:0; height:42px; z-index:100;
+    background: var(--accent);
+    display:flex; align-items:center; padding:0 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  #header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight:700; color:#fff;
+    letter-spacing: 1px; text-transform: uppercase;
+    flex:1; text-align:center;
+    pointer-events:none;
+  }
+  .hdr-btn {
+    width:32px; height:32px; border:none; background:none;
+    color:#fff; font-size:18px; cursor:pointer; border-radius:var(--radius);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .hdr-btn:active { background: rgba(255,255,255,0.15); }
+
+  /* ─── LEFT MENU ─── */
+  #leftMenu {
+    position:fixed; top:42px; left:0; bottom:0; width:220px;
+    background: var(--panel); z-index:90;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+    overflow-y:auto;
+    padding: 8px;
+  }
+  #leftMenu.open { transform: translateX(0); }
+  .menu-section { margin-bottom:12px; }
+  .menu-section-title {
+    font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:1.5px;
+    color:var(--text-light); padding:6px 4px 4px; 
+  }
+  .menu-btn {
+    display:flex; align-items:center; gap:8px;
+    width:100%; padding:8px; border:none;
+    background:none; color:var(--text); font-size:13px;
+    font-family:'IBM Plex Sans',sans-serif;
+    cursor:pointer; border-radius:var(--radius); text-align:left;
+  }
+  .menu-btn:active, .menu-btn:hover { background:var(--panel-hover); }
+  .menu-btn .ico { font-size:16px; width:24px; text-align:center; }
+
+  /* ─── CANVAS AREA ─── */
+  #canvasArea {
+    position:fixed; top:42px; left:0; right:0; bottom:0;
+    overflow:hidden; background: var(--bg);
+    display:flex; align-items:center; justify-content:center;
+  }
+  #canvasWrap {
+    position:relative;
+    transform-origin: center center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  }
+  #mainCanvas {
+    display:block; background: var(--canvas-bg);
+    image-rendering: auto;
+  }
+
+  /* ─── CONTEXT TOOLBAR (appears on element select) ─── */
+  #ctxToolbar {
+    position:fixed; right:8px; top:50%; transform:translateY(-50%);
+    z-index:80; display:none; flex-direction:column; gap:4px;
+  }
+  #ctxToolbar.visible { display:flex; }
+  .ctx-btn {
+    width:var(--btn-size); height:var(--btn-size);
+    border:1px solid var(--border); background:var(--panel);
+    border-radius:var(--radius); color:var(--text); font-size:15px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow: var(--shadow);
+  }
+  .ctx-btn:active { background:var(--panel-hover); }
+  .ctx-btn.danger { color:var(--accent2); }
+
+  /* ─── CROP TOOLBAR ─── */
+  #cropToolbar {
+    position:fixed; right:8px; top:50%; transform:translateY(-50%);
+    z-index:80; display:none; flex-direction:column; gap:4px;
+  }
+  #cropToolbar.visible { display:flex; }
+
+  /* ─── BOTTOM BAR ─── */
+  #bottomBar {
+    position:fixed; bottom:0; left:0; right:0; 
+    height:52px; z-index:85;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; gap:2px;
+    padding:0 4px;
+  }
+  .tool-btn {
+    width:42px; height:42px; border:none; background:none;
+    color:var(--text); font-size:18px; cursor:pointer;
+    border-radius:var(--radius);
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; position:relative;
+  }
+  .tool-btn.active { background:var(--accent); color:#fff; }
+  .tool-btn:active { background:var(--panel-hover); }
+  .tool-btn .tool-label {
+    font-size:8px; font-family:'Space Mono',monospace;
+    margin-top:1px; text-transform:uppercase; letter-spacing:.5px;
+  }
+
+  /* ─── MODALS / PANELS ─── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.5);
+    z-index:200; display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-panel {
+    background:var(--panel); width:100%; max-width:400px;
+    max-height:70vh; border-radius:12px 12px 0 0;
+    padding:16px; overflow-y:auto;
+  }
+  .modal-title {
+    font-family:'Space Mono',monospace; font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .modal-close {
+    border:none; background:none; font-size:20px; cursor:pointer; color:var(--text);
+  }
+
+  /* Color picker */
+  .color-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .color-swatch {
+    width:32px; height:32px; border-radius:50%; border:2px solid transparent;
+    cursor:pointer; box-shadow:var(--shadow);
+  }
+  .color-swatch.active { border-color:var(--accent); }
+  .hex-input {
+    display:flex; gap:6px; align-items:center;
+  }
+  .hex-input input {
+    flex:1; padding:6px 8px; border:1px solid var(--border);
+    border-radius:var(--radius); font-family:'Space Mono',monospace;
+    font-size:13px; background:#fff;
+  }
+  .hex-input button {
+    padding:6px 12px; border:1px solid var(--border); background:var(--accent);
+    color:#fff; border-radius:var(--radius); cursor:pointer;
+    font-family:'Space Mono',monospace; font-size:11px;
+  }
+
+  /* Text panel */
+  .text-input-area {
+    width:100%; padding:8px; border:1px solid var(--border);
+    border-radius:var(--radius); font-size:14px; resize:none;
+    font-family:'IBM Plex Sans',sans-serif; min-height:60px;
+    margin-bottom:8px;
+  }
+  .font-option {
+    padding:8px; cursor:pointer; border-radius:var(--radius);
+    margin-bottom:2px; font-size:14px;
+  }
+  .font-option:hover, .font-option.active { background:var(--panel-hover); }
+
+  /* Filter panel */
+  .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .filter-card {
+    padding:10px; border:1px solid var(--border); border-radius:var(--radius);
+    cursor:pointer; text-align:center; font-size:12px;
+    font-family:'Space Mono',monospace; background:#fff;
+  }
+  .filter-card:active { background:var(--panel-hover); }
+  .filter-card .filter-preview {
+    width:100%; height:40px; border-radius:2px; margin-bottom:4px;
+  }
+
+  /* Slider */
+  .slider-row {
+    display:flex; align-items:center; gap:8px; margin:8px 0;
+  }
+  .slider-row label { font-size:11px; font-family:'Space Mono',monospace; min-width:60px; }
+  .slider-row input[type=range] { flex:1; }
+
+  /* Selection handles */
+  .selection-box {
+    position:absolute; pointer-events:none;
+    border:2px dashed var(--accent2);
+    z-index:50;
+  }
+
+  /* Zoom indicator */
+  #zoomIndicator {
+    position:fixed; bottom:60px; right:8px; z-index:80;
+    font-family:'Space Mono',monospace; font-size:11px;
+    background:var(--accent); color:#fff; padding:3px 8px;
+    border-radius:var(--radius);
+  }
+
+  /* Hidden file input */
+  #fileInput { display:none; }
+
+  /* Overlay dimmer for menu */
+  #menuOverlay {
+    position:fixed; inset:0; z-index:89;
+    background:rgba(0,0,0,0.3); display:none;
+  }
+  #menuOverlay.open { display:block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <button class="hdr-btn" id="btnMenuToggle" title="Menú">☰</button>
+  <h1>Curators of Internet</h1>
+  <button class="hdr-btn" id="btnUndo" title="Deshacer">↩</button>
+</div>
+
+<!-- MENU OVERLAY -->
+<div id="menuOverlay"></div>
+
+<!-- LEFT MENU -->
+<div id="leftMenu">
+  <div class="menu-section">
+    <div class="menu-section-title">Archivo</div>
+    <button class="menu-btn" id="menuUpload"><span class="ico">↑</span> Cargar imagen</button>
+    <button class="menu-btn" id="menuDownload"><span class="ico">↓</span> Exportar PNG</button>
+    <button class="menu-btn" id="menuDownloadJPG"><span class="ico">↓</span> Exportar JPG</button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-title">Lienzo</div>
+    <button class="menu-btn" id="menuBgColor"><span class="ico">◼</span> Color de fondo</button>
+    <button class="menu-btn" id="menuClearCanvas"><span class="ico">✕</span> Limpiar lienzo</button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-title">Añadir</div>
+    <button class="menu-btn" id="menuAddText"><span class="ico">A</span> Añadir texto</button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-title">Paletas guardadas</div>
+    <div id="savedPalettes"></div>
+    <button class="menu-btn" id="menuSavePalette"><span class="ico">+</span> Guardar paleta actual</button>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div id="canvasArea">
+  <div id="canvasWrap">
+    <canvas id="mainCanvas"></canvas>
+  </div>
+</div>
+
+<!-- ZOOM INDICATOR -->
+<div id="zoomIndicator">100%</div>
+
+<!-- CONTEXT TOOLBAR (when element selected) -->
+<div id="ctxToolbar">
+  <button class="ctx-btn" id="ctxBringFront" title="Traer al frente">↑</button>
+  <button class="ctx-btn" id="ctxSendBack" title="Enviar atrás">↓</button>
+  <button class="ctx-btn" id="ctxCrop" title="Recortar">✂</button>
+  <button class="ctx-btn" id="ctxFilter" title="Filtros">◐</button>
+  <button class="ctx-btn" id="ctxDuplicate" title="Duplicar">⧉</button>
+  <button class="ctx-btn danger" id="ctxDelete" title="Eliminar">✕</button>
+</div>
+
+<!-- CROP TOOLBAR -->
+<div id="cropToolbar">
+  <button class="ctx-btn" id="cropFreehand" title="Corte libre">✎</button>
+  <button class="ctx-btn" id="cropRect" title="Corte recto">▭</button>
+  <button class="ctx-btn" id="cropApply" title="Aplicar corte" style="color:green">✓</button>
+  <button class="ctx-btn" id="cropInvert" title="Invertir selección">⊘</button>
+  <button class="ctx-btn danger" id="cropCancel" title="Cancelar">✕</button>
+</div>
+
+<!-- BOTTOM TOOLBAR -->
+<div id="bottomBar">
+  <button class="tool-btn" id="toolMove" data-tool="move">
+    <span>✥</span><span class="tool-label">Mover</span>
+  </button>
+  <button class="tool-btn" id="toolCrop" data-tool="crop">
+    <span>✂</span><span class="tool-label">Cortar</span>
+  </button>
+  <button class="tool-btn" id="toolText" data-tool="text">
+    <span>A</span><span class="tool-label">Texto</span>
+  </button>
+  <button class="tool-btn" id="toolFilter" data-tool="filter">
+    <span>◐</span><span class="tool-label">Filtro</span>
+  </button>
+  <button class="tool-btn" id="toolColor" data-tool="color">
+    <span>◼</span><span class="tool-label">Color</span>
+  </button>
+  <button class="tool-btn" id="toolUpload" data-tool="upload">
+    <span>↑</span><span class="tool-label">Subir</span>
+  </button>
+</div>
+
+<!-- FILE INPUT -->
+<input type="file" id="fileInput" accept="image/*" multiple>
+
+<!-- BG COLOR MODAL -->
+<div class="modal-overlay" id="bgColorModal">
+  <div class="modal-panel">
+    <div class="modal-title">Color de fondo <button class="modal-close" onclick="closeModal('bgColorModal')">✕</button></div>
+    <div class="color-grid" id="bgColorGrid"></div>
+    <div class="hex-input">
+      <input type="text" id="bgHexInput" placeholder="#ffffff" maxlength="7">
+      <button onclick="applyBgHex()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEXT MODAL -->
+<div class="modal-overlay" id="textModal">
+  <div class="modal-panel">
+    <div class="modal-title">Añadir texto <button class="modal-close" onclick="closeModal('textModal')">✕</button></div>
+    <textarea class="text-input-area" id="textContent" placeholder="Escribe aquí..."></textarea>
+    <div class="slider-row">
+      <label>Tamaño</label>
+      <input type="range" id="textSize" min="8" max="120" value="24">
+      <span id="textSizeVal">24</span>
+    </div>
+    <div class="menu-section-title" style="margin:8px 0 4px">Tipografía</div>
+    <div id="fontList"></div>
+    <div class="menu-section-title" style="margin:8px 0 4px">Color</div>
+    <div class="color-grid" id="textColorGrid"></div>
+    <div class="hex-input" style="margin-bottom:8px">
+      <input type="text" id="textHexInput" placeholder="#000000" maxlength="7">
+      <button onclick="applyTextHex()">OK</button>
+    </div>
+    <button class="menu-btn" style="background:var(--accent);color:#fff;justify-content:center;margin-top:8px" onclick="addTextToCanvas()">
+      Añadir al lienzo
+    </button>
+  </div>
+</div>
+
+<!-- FILTER MODAL -->
+<div class="modal-overlay" id="filterModal">
+  <div class="modal-panel">
+    <div class="modal-title">Filtros <button class="modal-close" onclick="closeModal('filterModal')">✕</button></div>
+    <div class="filter-grid" id="filterGrid"></div>
+    <div id="filterControls" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CURATORS OF INTERNET - Collage Editor
+// ═══════════════════════════════════════════
+
+const DIN_A4_W = 2480; // 210mm at 300dpi
+const DIN_A4_H = 3508; // 297mm at 300dpi
+const DISPLAY_SCALE = 0.12; // initial scale to fit mobile
+
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+const canvasArea = document.getElementById('canvasArea');
+
+canvas.width = DIN_A4_W;
+canvas.height = DIN_A4_H;
+
+// ─── STATE ───
+let state = {
+  elements: [],       // {type:'image'|'text', x, y, w, h, rotation, data, ...}
+  selectedId: null,
+  bgColor: '#ffffff',
+  zoom: DISPLAY_SCALE,
+  panX: 0, panY: 0,
+  tool: 'move',       // move, crop, text, filter
+  cropMode: null,     // 'freehand' | 'rect'
+  cropPoints: [],
+  cropRect: null,
+  history: [],
+  fonts: [
+    { name: 'Arial Black', css: 'Arial Black, sans-serif' },
+    { name: 'Space Mono', css: "'Space Mono', monospace" },
+    { name: 'IBM Plex Sans', css: "'IBM Plex Sans', sans-serif" },
+    { name: 'Georgia', css: 'Georgia, serif' },
+    { name: 'Courier New', css: "'Courier New', monospace" },
+    { name: 'Impact', css: 'Impact, sans-serif' },
+    { name: 'Trebuchet MS', css: "'Trebuchet MS', sans-serif" },
+    { name: 'Verdana', css: 'Verdana, sans-serif' },
+  ],
+  selectedFont: 'Arial Black',
+  selectedFontCSS: 'Arial Black, sans-serif',
+  textColor: '#000000',
+  palettes: JSON.parse(localStorage.getItem('coi_palettes') || '[]'),
+  currentPalette: ['#1a1a1a','#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#ffffff','#e8e4df'],
+};
+
+let nextId = 1;
+let undoStack = [];
+const MAX_UNDO = 30;
+
+// ─── PALETTE COLORS ───
+const defaultColors = [
+  '#ffffff','#000000','#e74c3c','#e67e22','#f1c40f','#2ecc71',
+  '#1abc9c','#3498db','#9b59b6','#e84393','#636e72','#dfe6e9',
+  '#d63031','#fdcb6e','#00b894','#0984e3','#6c5ce7','#fab1a0',
+  '#ffeaa7','#55efc4','#74b9ff','#a29bfe','#fd79a8','#b2bec3',
+];
+
+// ─── SAVE STATE FOR UNDO ───
+function saveUndo() {
+  undoStack.push(JSON.stringify(state.elements.map(e => ({...e, img: undefined}))));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+// ─── RENDER ───
+function render() {
+  const scale = state.zoom;
+  const dw = DIN_A4_W * scale;
+  const dh = DIN_A4_H * scale;
+  canvasWrap.style.width = dw + 'px';
+  canvasWrap.style.height = dh + 'px';
+  canvasWrap.style.transform = `translate(${state.panX}px, ${state.panY}px)`;
+
+  canvas.style.width = dw + 'px';
+  canvas.style.height = dh + 'px';
+
+  ctx.clearRect(0, 0, DIN_A4_W, DIN_A4_H);
+  ctx.fillStyle = state.bgColor;
+  ctx.fillRect(0, 0, DIN_A4_W, DIN_A4_H);
+
+  // Draw elements
+  for (const el of state.elements) {
+    ctx.save();
+    ctx.translate(el.x + el.w/2, el.y + el.h/2);
+    ctx.rotate((el.rotation || 0) * Math.PI / 180);
+
+    if (el.type === 'image' && el.img) {
+      ctx.drawImage(el.img, -el.w/2, -el.h/2, el.w, el.h);
+    } else if (el.type === 'text') {
+      ctx.fillStyle = el.color || '#000';
+      ctx.font = `${el.bold?'bold ':''} ${el.fontSize || 24}px ${el.fontCSS || 'Arial Black, sans-serif'}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      const lines = wrapText(el.text, el.w, ctx);
+      let ly = -el.h/2;
+      for (const line of lines) {
+        ctx.fillText(line, -el.w/2, ly);
+        ly += (el.fontSize || 24) * 1.3;
+      }
+    }
+
+    // Selection border
+    if (el.id === state.selectedId) {
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([12, 6]);
+      ctx.strokeRect(-el.w/2 - 4, -el.h/2 - 4, el.w + 8, el.h + 8);
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+  }
+
+  // Draw crop overlay
+  if (state.tool === 'crop' && state.selectedId) {
+    drawCropOverlay();
+  }
+
+  // Zoom indicator
+  document.getElementById('zoomIndicator').textContent = Math.round(state.zoom * 100 / DISPLAY_SCALE * 100) / 100 + '%';
+
+  // Context toolbar
+  const ctxTb = document.getElementById('ctxToolbar');
+  const cropTb = document.getElementById('cropToolbar');
+  if (state.selectedId && state.tool === 'move') {
+    ctxTb.classList.add('visible');
+    cropTb.classList.remove('visible');
+  } else if (state.tool === 'crop' && state.selectedId) {
+    cropTb.classList.add('visible');
+    ctxTb.classList.remove('visible');
+  } else {
+    ctxTb.classList.remove('visible');
+    cropTb.classList.remove('visible');
+  }
+
+  // Active tool
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === state.tool));
+}
+
+function wrapText(text, maxW, c) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (c.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function drawCropOverlay() {
+  if (state.cropMode === 'rect' && state.cropRect) {
+    const r = state.cropRect;
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(231,76,60,0.1)';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+  } else if (state.cropMode === 'freehand' && state.cropPoints.length > 1) {
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    ctx.moveTo(state.cropPoints[0].x, state.cropPoints[0].y);
+    for (let i = 1; i < state.cropPoints.length; i++) {
+      ctx.lineTo(state.cropPoints[i].x, state.cropPoints[i].y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(231,76,60,0.1)';
+    ctx.fill();
+    ctx.setLineDash([]);
+  }
+}
+
+// ─── COORDINATE HELPERS ───
+function screenToCanvas(sx, sy) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (sx - rect.left) / state.zoom * (DIN_A4_W / (rect.width / state.zoom));
+  const cy = (sy - rect.top) / state.zoom * (DIN_A4_H / (rect.height / state.zoom));
+  return {
+    x: (sx - rect.left) * (DIN_A4_W / rect.width),
+    y: (sy - rect.top) * (DIN_A4_H / rect.height)
+  };
+}
+
+function hitTest(cx, cy) {
+  for (let i = state.elements.length - 1; i >= 0; i--) {
+    const el = state.elements[i];
+    if (cx >= el.x && cx <= el.x + el.w && cy >= el.y && cy <= el.y + el.h) {
+      return el;
+    }
+  }
+  return null;
+}
+
+// ─── TOUCH/MOUSE HANDLING ───
+let isDragging = false;
+let dragEl = null;
+let dragOffX = 0, dragOffY = 0;
+let isPanning = false;
+let lastPanX = 0, lastPanY = 0;
+let pinchDist = 0;
+let isCropping = false;
+let cropStartX = 0, cropStartY = 0;
+let isResizing = false;
+let resizeCorner = '';
+let resizeStartEl = null;
+
+function getTouchDist(t1, t2) {
+  return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+}
+
+canvasArea.addEventListener('touchstart', handlePointerDown, { passive: false });
+canvasArea.addEventListener('touchmove', handlePointerMove, { passive: false });
+canvasArea.addEventListener('touchend', handlePointerUp, { passive: false });
+canvasArea.addEventListener('mousedown', handlePointerDown);
+canvasArea.addEventListener('mousemove', handlePointerMove);
+canvasArea.addEventListener('mouseup', handlePointerUp);
+
+// Prevent default zoom on double-tap
+canvasArea.addEventListener('dblclick', e => e.preventDefault());
+
+function getPointerPos(e) {
+  if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function handlePointerDown(e) {
+  e.preventDefault();
+
+  // Pinch zoom
+  if (e.touches && e.touches.length === 2) {
+    pinchDist = getTouchDist(e.touches[0], e.touches[1]);
+    isPanning = false;
+    isDragging = false;
+    return;
+  }
+
+  const pos = getPointerPos(e);
+  const cpos = screenToCanvas(pos.x, pos.y);
+
+  if (state.tool === 'move') {
+    const hit = hitTest(cpos.x, cpos.y);
+    if (hit) {
+      // Check resize corner (bottom-right 60px area)
+      const cornerX = hit.x + hit.w;
+      const cornerY = hit.y + hit.h;
+      const cornerDist = Math.hypot(cpos.x - cornerX, cpos.y - cornerY);
+      const threshold = 80 / state.zoom; // scale-aware threshold
+      
+      if (cornerDist < threshold && state.selectedId === hit.id) {
+        isResizing = true;
+        resizeStartEl = { ...hit };
+        dragOffX = cpos.x;
+        dragOffY = cpos.y;
+      } else {
+        saveUndo();
+        state.selectedId = hit.id;
+        isDragging = true;
+        dragEl = hit;
+        dragOffX = cpos.x - hit.x;
+        dragOffY = cpos.y - hit.y;
+      }
+    } else {
+      state.selectedId = null;
+      isPanning = true;
+      lastPanX = pos.x;
+      lastPanY = pos.y;
+    }
+  } else if (state.tool === 'crop' && state.selectedId) {
+    if (state.cropMode === 'rect') {
+      isCropping = true;
+      cropStartX = cpos.x;
+      cropStartY = cpos.y;
+      state.cropRect = { x: cpos.x, y: cpos.y, w: 0, h: 0 };
+    } else if (state.cropMode === 'freehand') {
+      isCropping = true;
+      state.cropPoints = [{ x: cpos.x, y: cpos.y }];
+    }
+  } else {
+    // Pan on any other tool when tapping empty space
+    const hit = hitTest(cpos.x, cpos.y);
+    if (!hit) {
+      isPanning = true;
+      lastPanX = pos.x;
+      lastPanY = pos.y;
+    }
+  }
+
+  render();
+}
+
+function handlePointerMove(e) {
+  e.preventDefault();
+
+  // Pinch zoom
+  if (e.touches && e.touches.length === 2) {
+    const newDist = getTouchDist(e.touches[0], e.touches[1]);
+    const scale = newDist / pinchDist;
+    state.zoom = Math.max(0.02, Math.min(1, state.zoom * scale));
+    pinchDist = newDist;
+    render();
+    return;
+  }
+
+  const pos = getPointerPos(e);
+
+  if (isDragging && dragEl) {
+    const cpos = screenToCanvas(pos.x, pos.y);
+    dragEl.x = cpos.x - dragOffX;
+    dragEl.y = cpos.y - dragOffY;
+    render();
+  } else if (isResizing && resizeStartEl) {
+    const cpos = screenToCanvas(pos.x, pos.y);
+    const el = state.elements.find(e => e.id === state.selectedId);
+    if (el) {
+      const dx = cpos.x - dragOffX;
+      const dy = cpos.y - dragOffY;
+      const aspect = resizeStartEl.w / resizeStartEl.h;
+      let newW = Math.max(50, resizeStartEl.w + dx);
+      let newH = newW / aspect;
+      el.w = newW;
+      el.h = newH;
+      render();
+    }
+  } else if (isPanning) {
+    const dx = pos.x - lastPanX;
+    const dy = pos.y - lastPanY;
+    state.panX += dx;
+    state.panY += dy;
+    lastPanX = pos.x;
+    lastPanY = pos.y;
+    render();
+  } else if (isCropping && state.tool === 'crop') {
+    const cpos = screenToCanvas(pos.x, pos.y);
+    if (state.cropMode === 'rect') {
+      state.cropRect.w = cpos.x - cropStartX;
+      state.cropRect.h = cpos.y - cropStartY;
+      render();
+    } else if (state.cropMode === 'freehand') {
+      state.cropPoints.push({ x: cpos.x, y: cpos.y });
+      render();
+    }
+  }
+}
+
+function handlePointerUp(e) {
+  isDragging = false;
+  dragEl = null;
+  isPanning = false;
+  isCropping = false;
+  isResizing = false;
+  resizeStartEl = null;
+}
+
+// ─── MOUSE WHEEL ZOOM ───
+canvasArea.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.max(0.02, Math.min(1, state.zoom * delta));
+  render();
+}, { passive: false });
+
+// ─── IMAGE LOADING ───
+document.getElementById('fileInput').addEventListener('change', handleFiles);
+
+function handleFiles(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        saveUndo();
+        // Scale to fit nicely on canvas
+        let w = img.width;
+        let h = img.height;
+        const maxDim = DIN_A4_W * 0.6;
+        if (w > maxDim || h > maxDim) {
+          const s = maxDim / Math.max(w, h);
+          w *= s;
+          h *= s;
+        }
+        const el = {
+          id: nextId++,
+          type: 'image',
+          x: DIN_A4_W / 2 - w / 2 + (Math.random() - 0.5) * 200,
+          y: DIN_A4_H / 2 - h / 2 + (Math.random() - 0.5) * 200,
+          w, h,
+          rotation: 0,
+          img: img,
+          origSrc: ev.target.result,
+          filters: {},
+        };
+        state.elements.push(el);
+        state.selectedId = el.id;
+        state.tool = 'move';
+        render();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function triggerUpload() {
+  document.getElementById('fileInput').click();
+}
+
+// ─── MENU ───
+const leftMenu = document.getElementById('leftMenu');
+const menuOverlay = document.getElementById('menuOverlay');
+
+document.getElementById('btnMenuToggle').onclick = () => {
+  leftMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+};
+menuOverlay.onclick = () => {
+  leftMenu.classList.remove('open');
+  menuOverlay.classList.remove('open');
+};
+function closeMenu() {
+  leftMenu.classList.remove('open');
+  menuOverlay.classList.remove('open');
+}
+
+document.getElementById('menuUpload').onclick = () => { closeMenu(); triggerUpload(); };
+document.getElementById('menuDownload').onclick = () => { closeMenu(); exportCanvas('png'); };
+document.getElementById('menuDownloadJPG').onclick = () => { closeMenu(); exportCanvas('jpg'); };
+document.getElementById('menuBgColor').onclick = () => { closeMenu(); openModal('bgColorModal'); };
+document.getElementById('menuAddText').onclick = () => { closeMenu(); openModal('textModal'); };
+document.getElementById('menuClearCanvas').onclick = () => {
+  closeMenu();
+  if (confirm('¿Limpiar todo el lienzo?')) {
+    saveUndo();
+    state.elements = [];
+    state.selectedId = null;
+    render();
+  }
+};
+
+// ─── BOTTOM TOOLBAR ───
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.onclick = () => {
+    const tool = btn.dataset.tool;
+    if (tool === 'upload') { triggerUpload(); return; }
+    if (tool === 'text') { openModal('textModal'); return; }
+    if (tool === 'filter') { 
+      if (state.selectedId) openModal('filterModal'); 
+      return; 
+    }
+    if (tool === 'color') { openModal('bgColorModal'); return; }
+    if (tool === 'crop') {
+      state.tool = 'crop';
+      state.cropMode = 'rect';
+      state.cropPoints = [];
+      state.cropRect = null;
+    } else {
+      state.tool = tool;
+    }
+    render();
+  };
+});
+
+// ─── CONTEXT TOOLBAR ───
+document.getElementById('ctxBringFront').onclick = () => {
+  const idx = state.elements.findIndex(e => e.id === state.selectedId);
+  if (idx >= 0 && idx < state.elements.length - 1) {
+    saveUndo();
+    const el = state.elements.splice(idx, 1)[0];
+    state.elements.push(el);
+    render();
+  }
+};
+document.getElementById('ctxSendBack').onclick = () => {
+  const idx = state.elements.findIndex(e => e.id === state.selectedId);
+  if (idx > 0) {
+    saveUndo();
+    const el = state.elements.splice(idx, 1)[0];
+    state.elements.unshift(el);
+    render();
+  }
+};
+document.getElementById('ctxDelete').onclick = () => {
+  saveUndo();
+  state.elements = state.elements.filter(e => e.id !== state.selectedId);
+  state.selectedId = null;
+  render();
+};
+document.getElementById('ctxDuplicate').onclick = () => {
+  const el = state.elements.find(e => e.id === state.selectedId);
+  if (el) {
+    saveUndo();
+    const dup = { ...el, id: nextId++, x: el.x + 60, y: el.y + 60 };
+    if (el.img) {
+      const newImg = new Image();
+      newImg.src = el.origSrc;
+      dup.img = newImg;
+    }
+    state.elements.push(dup);
+    state.selectedId = dup.id;
+    render();
+  }
+};
+document.getElementById('ctxCrop').onclick = () => {
+  state.tool = 'crop';
+  state.cropMode = 'rect';
+  state.cropPoints = [];
+  state.cropRect = null;
+  render();
+};
+document.getElementById('ctxFilter').onclick = () => {
+  openModal('filterModal');
+};
+
+// ─── CROP TOOLBAR ───
+document.getElementById('cropFreehand').onclick = () => {
+  state.cropMode = 'freehand';
+  state.cropPoints = [];
+  render();
+};
+document.getElementById('cropRect').onclick = () => {
+  state.cropMode = 'rect';
+  state.cropRect = null;
+  render();
+};
+document.getElementById('cropCancel').onclick = () => {
+  state.tool = 'move';
+  state.cropPoints = [];
+  state.cropRect = null;
+  render();
+};
+document.getElementById('cropInvert').onclick = () => {
+  // Toggle invert flag for next apply
+  const btn = document.getElementById('cropInvert');
+  btn.classList.toggle('active');
+};
+document.getElementById('cropApply').onclick = () => {
+  applyCrop();
+};
+
+function applyCrop() {
+  const el = state.elements.find(e => e.id === state.selectedId);
+  if (!el || el.type !== 'image') return;
+
+  saveUndo();
+  const invert = document.getElementById('cropInvert').classList.contains('active');
+
+  // Create offscreen canvas for cropping
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = el.w;
+  offCanvas.height = el.h;
+  const offCtx = offCanvas.getContext('2d');
+
+  if (state.cropMode === 'rect' && state.cropRect) {
+    const r = state.cropRect;
+    // Normalize rect
+    const rx = Math.min(r.x, r.x + r.w) - el.x;
+    const ry = Math.min(r.y, r.y + r.h) - el.y;
+    const rw = Math.abs(r.w);
+    const rh = Math.abs(r.h);
+
+    if (!invert) {
+      // Keep inside
+      offCanvas.width = rw;
+      offCanvas.height = rh;
+      offCtx.drawImage(el.img, 
+        rx * (el.img.width / el.w), ry * (el.img.height / el.h),
+        rw * (el.img.width / el.w), rh * (el.img.height / el.h),
+        0, 0, rw, rh
+      );
+      el.w = rw;
+      el.h = rh;
+      el.x = el.x + rx;
+      el.y = el.y + ry;
+    } else {
+      // Keep outside - clear inside
+      offCtx.drawImage(el.img, 0, 0, el.w, el.h);
+      offCtx.clearRect(rx, ry, rw, rh);
+    }
+  } else if (state.cropMode === 'freehand' && state.cropPoints.length > 2) {
+    const pts = state.cropPoints.map(p => ({ x: p.x - el.x, y: p.y - el.y }));
+    
+    if (!invert) {
+      // Draw image, then mask with path
+      offCtx.save();
+      offCtx.beginPath();
+      offCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) offCtx.lineTo(pts[i].x, pts[i].y);
+      offCtx.closePath();
+      offCtx.clip();
+      offCtx.drawImage(el.img, 0, 0, el.w, el.h);
+      offCtx.restore();
+    } else {
+      offCtx.drawImage(el.img, 0, 0, el.w, el.h);
+      offCtx.save();
+      offCtx.globalCompositeOperation = 'destination-out';
+      offCtx.beginPath();
+      offCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) offCtx.lineTo(pts[i].x, pts[i].y);
+      offCtx.closePath();
+      offCtx.fill();
+      offCtx.restore();
+    }
+  }
+
+  // Replace image
+  const newImg = new Image();
+  newImg.onload = () => {
+    el.img = newImg;
+    el.origSrc = offCanvas.toDataURL('image/png');
+    state.tool = 'move';
+    state.cropPoints = [];
+    state.cropRect = null;
+    document.getElementById('cropInvert').classList.remove('active');
+    render();
+  };
+  newImg.src = offCanvas.toDataURL('image/png');
+}
+
+// ─── UNDO ───
+document.getElementById('btnUndo').onclick = () => {
+  if (undoStack.length === 0) return;
+  const prev = JSON.parse(undoStack.pop());
+  // Restore elements but reload images
+  const oldElements = state.elements;
+  state.elements = prev.map(e => {
+    const old = oldElements.find(o => o.id === e.id);
+    if (e.type === 'image' && old && old.img) {
+      return { ...e, img: old.img, origSrc: old.origSrc };
+    }
+    return e;
+  });
+  render();
+};
+
+// ─── MODALS ───
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'bgColorModal') buildColorGrid('bgColorGrid', state.bgColor, c => { state.bgColor = c; render(); });
+  if (id === 'textModal') {
+    buildColorGrid('textColorGrid', state.textColor, c => { state.textColor = c; });
+    buildFontList();
+  }
+  if (id === 'filterModal') buildFilterPanel();
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+});
+
+function buildColorGrid(containerId, active, onChange) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const colors = state.currentPalette.length ? [...new Set([...state.currentPalette, ...defaultColors])] : defaultColors;
+  colors.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (c === active ? ' active' : '');
+    sw.style.background = c;
+    if (c === '#ffffff') sw.style.border = '2px solid #ccc';
+    sw.onclick = () => {
+      onChange(c);
+      container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+    };
+    container.appendChild(sw);
+  });
+}
+
+function applyBgHex() {
+  const v = document.getElementById('bgHexInput').value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    state.bgColor = v;
+    render();
+    closeModal('bgColorModal');
+  }
+}
+
+function applyTextHex() {
+  const v = document.getElementById('textHexInput').value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    state.textColor = v;
+    buildColorGrid('textColorGrid', state.textColor, c => { state.textColor = c; });
+  }
+}
+
+// ─── TEXT ───
+document.getElementById('textSize').oninput = e => {
+  document.getElementById('textSizeVal').textContent = e.target.value;
+};
+
+function buildFontList() {
+  const container = document.getElementById('fontList');
+  container.innerHTML = '';
+  state.fonts.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'font-option' + (f.name === state.selectedFont ? ' active' : '');
+    div.style.fontFamily = f.css;
+    div.textContent = f.name;
+    div.onclick = () => {
+      state.selectedFont = f.name;
+      state.selectedFontCSS = f.css;
+      container.querySelectorAll('.font-option').forEach(d => d.classList.remove('active'));
+      div.classList.add('active');
+    };
+    container.appendChild(div);
+  });
+}
+
+function addTextToCanvas() {
+  const text = document.getElementById('textContent').value.trim();
+  if (!text) return;
+  saveUndo();
+  const fontSize = parseInt(document.getElementById('textSize').value);
+  
+  // Measure text
+  ctx.font = `bold ${fontSize}px ${state.selectedFontCSS}`;
+  const metrics = ctx.measureText(text);
+  const w = Math.min(metrics.width + 40, DIN_A4_W * 0.8);
+  const lines = Math.ceil(metrics.width / w);
+  const h = fontSize * 1.3 * Math.max(lines, 1) + 20;
+
+  const el = {
+    id: nextId++,
+    type: 'text',
+    x: DIN_A4_W / 2 - w / 2,
+    y: DIN_A4_H / 2 - h / 2,
+    w, h,
+    text,
+    fontSize,
+    fontCSS: state.selectedFontCSS,
+    fontName: state.selectedFont,
+    color: state.textColor,
+    bold: true,
+    rotation: 0,
+  };
+  state.elements.push(el);
+  state.selectedId = el.id;
+  state.tool = 'move';
+  closeModal('textModal');
+  document.getElementById('textContent').value = '';
+  render();
+}
+
+// ─── FILTERS ───
+const filters = [
+  { name: 'Duotono', id: 'duotone' },
+  { name: 'Halftone', id: 'halftone' },
+  { name: 'Alto Contraste', id: 'highcontrast' },
+  { name: 'Escala Grises', id: 'grayscale' },
+  { name: 'Invertir', id: 'invert' },
+  { name: 'Sepia', id: 'sepia' },
+  { name: 'Posterizar', id: 'posterize' },
+  { name: 'Cuarteado', id: 'cracked' },
+  { name: 'Desaturar', id: 'desaturate' },
+  { name: 'Original', id: 'none' },
+];
+
+function buildFilterPanel() {
+  const grid = document.getElementById('filterGrid');
+  const controls = document.getElementById('filterControls');
+  grid.innerHTML = '';
+  controls.innerHTML = '';
+
+  filters.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'filter-card';
+    card.innerHTML = `<div class="filter-preview" style="background:${getFilterPreviewBg(f.id)}"></div>${f.name}`;
+    card.onclick = () => applyFilter(f.id);
+    grid.appendChild(card);
+  });
+}
+
+function getFilterPreviewBg(id) {
+  switch(id) {
+    case 'duotone': return 'linear-gradient(135deg, #e74c3c, #3498db)';
+    case 'halftone': return 'radial-gradient(circle, #1a1a1a 1px, transparent 1px), #ddd; background-size: 6px 6px';
+    case 'highcontrast': return 'linear-gradient(135deg, #000 50%, #fff 50%)';
+    case 'grayscale': return 'linear-gradient(90deg, #333, #aaa, #ddd)';
+    case 'invert': return 'linear-gradient(90deg, #000, #fff)';
+    case 'sepia': return 'linear-gradient(135deg, #704214, #c4956a)';
+    case 'posterize': return 'linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71, #3498db)';
+    case 'cracked': return '#ddd';
+    case 'desaturate': return 'linear-gradient(90deg, #888, #bbb)';
+    default: return '#fff';
+  }
+}
+
+function applyFilter(filterId) {
+  const el = state.elements.find(e => e.id === state.selectedId);
+  if (!el || el.type !== 'image') {
+    closeModal('filterModal');
+    return;
+  }
+
+  saveUndo();
+
+  if (filterId === 'none') {
+    // Restore original
+    const img = new Image();
+    img.onload = () => { el.img = img; render(); };
+    img.src = el.origSrc;
+    closeModal('filterModal');
+    return;
+  }
+
+  // Process filter
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = el.img.width;
+  offCanvas.height = el.img.height;
+  const offCtx = offCanvas.getContext('2d');
+  offCtx.drawImage(el.img, 0, 0);
+  const imageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+  const data = imageData.data;
+
+  switch(filterId) {
+    case 'grayscale':
+      for (let i = 0; i < data.length; i += 4) {
+        const g = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+        data[i] = data[i+1] = data[i+2] = g;
+      }
+      break;
+
+    case 'highcontrast':
+      for (let i = 0; i < data.length; i += 4) {
+        for (let c = 0; c < 3; c++) {
+          data[i+c] = data[i+c] > 128 ? 255 : 0;
+        }
+      }
+      break;
+
+    case 'invert':
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = 255 - data[i];
+        data[i+1] = 255 - data[i+1];
+        data[i+2] = 255 - data[i+2];
+      }
+      break;
+
+    case 'sepia':
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        data[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189);
+        data[i+1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
+        data[i+2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
+      }
+      break;
+
+    case 'duotone': {
+      const c1 = { r: 231, g: 76, b: 60 };   // red
+      const c2 = { r: 52, g: 152, b: 219 };   // blue
+      for (let i = 0; i < data.length; i += 4) {
+        const g = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+        data[i] = c1.r * (1 - g) + c2.r * g;
+        data[i+1] = c1.g * (1 - g) + c2.g * g;
+        data[i+2] = c1.b * (1 - g) + c2.b * g;
+      }
+      break;
+    }
+
+    case 'posterize': {
+      const levels = 4;
+      const step = 255 / levels;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = Math.round(data[i] / step) * step;
+        data[i+1] = Math.round(data[i+1] / step) * step;
+        data[i+2] = Math.round(data[i+2] / step) * step;
+      }
+      break;
+    }
+
+    case 'halftone': {
+      // Create halftone dots effect
+      const dotSize = 4;
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = offCanvas.width;
+      tempCanvas.height = offCanvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = '#fff';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      
+      for (let y = 0; y < offCanvas.height; y += dotSize * 2) {
+        for (let x = 0; x < offCanvas.width; x += dotSize * 2) {
+          const idx = (y * offCanvas.width + x) * 4;
+          const bright = (data[idx] * 0.299 + data[idx+1] * 0.587 + data[idx+2] * 0.114) / 255;
+          const radius = dotSize * (1 - bright);
+          tempCtx.fillStyle = '#000';
+          tempCtx.beginPath();
+          tempCtx.arc(x + dotSize, y + dotSize, radius, 0, Math.PI * 2);
+          tempCtx.fill();
+        }
+      }
+      
+      const newImg = new Image();
+      newImg.onload = () => { el.img = newImg; render(); };
+      newImg.src = tempCanvas.toDataURL();
+      closeModal('filterModal');
+      return;
+    }
+
+    case 'cracked': {
+      // Cracked/glitch effect
+      for (let i = 0; i < data.length; i += 4) {
+        if (Math.random() < 0.03) {
+          const shift = Math.floor(Math.random() * 30) * 4;
+          if (i + shift < data.length) {
+            data[i] = data[i + shift];
+            data[i+1] = data[i + shift + 1];
+            data[i+2] = data[i + shift + 2];
+          }
+        }
+      }
+      // Add line cracks
+      offCtx.putImageData(imageData, 0, 0);
+      offCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+      offCtx.lineWidth = 1;
+      for (let i = 0; i < 15; i++) {
+        offCtx.beginPath();
+        let cx = Math.random() * offCanvas.width;
+        let cy = Math.random() * offCanvas.height;
+        offCtx.moveTo(cx, cy);
+        for (let j = 0; j < 8; j++) {
+          cx += (Math.random() - 0.5) * 80;
+          cy += (Math.random() - 0.5) * 80;
+          offCtx.lineTo(cx, cy);
+        }
+        offCtx.stroke();
+      }
+      const crackImg = new Image();
+      crackImg.onload = () => { el.img = crackImg; render(); };
+      crackImg.src = offCanvas.toDataURL();
+      closeModal('filterModal');
+      return;
+    }
+
+    case 'desaturate':
+      for (let i = 0; i < data.length; i += 4) {
+        const g = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+        data[i] = data[i] * 0.5 + g * 0.5;
+        data[i+1] = data[i+1] * 0.5 + g * 0.5;
+        data[i+2] = data[i+2] * 0.5 + g * 0.5;
+      }
+      break;
+  }
+
+  offCtx.putImageData(imageData, 0, 0);
+  const newImg = new Image();
+  newImg.onload = () => { el.img = newImg; render(); };
+  newImg.src = offCanvas.toDataURL();
+  closeModal('filterModal');
+}
+
+// ─── EXPORT ───
+function exportCanvas(format) {
+  // Deselect for clean export
+  const prevSel = state.selectedId;
+  state.selectedId = null;
+  render();
+
+  const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+  const quality = format === 'jpg' ? 0.95 : undefined;
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `curators-of-internet-collage.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    state.selectedId = prevSel;
+    render();
+  }, mime, quality);
+}
+
+// ─── PALETTES ───
+function renderSavedPalettes() {
+  const container = document.getElementById('savedPalettes');
+  container.innerHTML = '';
+  state.palettes.forEach((pal, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:3px;align-items:center;margin:4px 0;cursor:pointer;padding:4px;border-radius:4px;';
+    row.onmouseenter = () => row.style.background = 'var(--panel-hover)';
+    row.onmouseleave = () => row.style.background = 'none';
+    
+    pal.colors.forEach(c => {
+      const sw = document.createElement('div');
+      sw.style.cssText = `width:16px;height:16px;border-radius:50%;background:${c};border:1px solid #aaa;flex-shrink:0;`;
+      row.appendChild(sw);
+    });
+    
+    const name = document.createElement('span');
+    name.textContent = pal.name || `Paleta ${idx + 1}`;
+    name.style.cssText = 'font-size:11px;margin-left:6px;flex:1;';
+    row.appendChild(name);
+    
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.style.cssText = 'border:none;background:none;color:#e74c3c;cursor:pointer;font-size:12px;';
+    del.onclick = e => {
+      e.stopPropagation();
+      state.palettes.splice(idx, 1);
+      localStorage.setItem('coi_palettes', JSON.stringify(state.palettes));
+      renderSavedPalettes();
+    };
+    row.appendChild(del);
+    
+    row.onclick = () => {
+      state.currentPalette = [...pal.colors];
+      closeMenu();
+    };
+    
+    container.appendChild(row);
+  });
+}
+
+document.getElementById('menuSavePalette').onclick = () => {
+  const name = prompt('Nombre de la paleta:') || `Paleta ${state.palettes.length + 1}`;
+  state.palettes.push({ name, colors: [...state.currentPalette] });
+  localStorage.setItem('coi_palettes', JSON.stringify(state.palettes));
+  renderSavedPalettes();
+};
+
+// ─── INIT ───
+renderSavedPalettes();
+render();
+
+// Center canvas
+function centerCanvas() {
+  const areaW = canvasArea.clientWidth;
+  const areaH = canvasArea.clientHeight;
+  const cw = DIN_A4_W * state.zoom;
+  const ch = DIN_A4_H * state.zoom;
+  state.panX = 0;
+  state.panY = 0;
+  
+  // Fit to screen
+  const scaleW = (areaW - 20) / DIN_A4_W;
+  const scaleH = (areaH - 20) / DIN_A4_H;
+  state.zoom = Math.min(scaleW, scaleH);
+  render();
+}
+centerCanvas();
+window.addEventListener('resize', centerCanvas);
+</script>
+</body>
+</html>
